@@ -10,7 +10,7 @@ The long-term project goals and phases are documented in `README.md` and `projec
 
 - Use Node.js 26.
 - The project uses ECMAScript modules (`"type": "module"`).
-- Install dependencies with `npm install`.
+- The project has no third-party runtime dependencies.
 - Start the CLI with `npm start`.
 - Set `OPENAI_API_KEY` in a local `.env` file.
 - `LLM_URL` can optionally override the default OpenAI endpoint.
@@ -26,9 +26,11 @@ There is currently no automated test suite. At minimum, run syntax checks on cha
 - `src/agent/conversation.js`: Runs the LLM/tool-call loop and appends assistant and tool messages to the conversation.
 - `src/agent/systemPrompt.js`: Defines the data-transformation agent's behavior and workflow.
 - `src/llm/llmCall.js`: Loads environment variables and makes the raw HTTP request to the LLM endpoint.
+- `src/logging/sessionLogger.js`: Writes concise live progress to the console and persistent structured session events to `logs/`.
 - `src/runtime/toolRuntime.js`: Converts registry entries to LLM tool definitions, parses tool calls, executes tools, and serializes results.
 - `src/tools/`: Contains individual local tool implementations, shared data-file path helpers, and the tool registry.
 - `data/`: Contains files available to local tools. This directory is intentionally ignored by Git.
+- `logs/`: Contains per-session JSON Lines audit logs. This directory is intentionally ignored by Git.
 
 ## Tool Conventions
 

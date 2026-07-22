@@ -7,6 +7,7 @@ import {
     pythonTimeoutMs
 } from "../config.js";
 import { readUserInput, writeOutput } from "../cli/terminal.js";
+import { logEvent } from "../logging/sessionLogger.js";
 import { resolveDataFile } from "./dataFiles.js";
 
 const execFileAsync = promisify(execFile);
@@ -33,12 +34,24 @@ export async function executePythonScript(
         .map(argument => JSON.stringify(argument))
         .join(" ");
     writeOutput(`python3 ${displayedArguments}`);
+    await logEvent("command.approval.requested", {
+        toolName: "executePythonScript",
+        scriptFilename,
+        inputFilename,
+        outputFilename
+    });
 
     const approval = (await readUserInput("Allow this command? [y/N] "))
         .trim()
         .toLowerCase();
+    const approved = approval === "y" || approval === "yes";
 
-    if (approval !== "y" && approval !== "yes") {
+    await logEvent("command.approval.received", {
+        toolName: "executePythonScript",
+        approved
+    });
+
+    if (!approved) {
         return {
             approved: false,
             executed: false,
@@ -51,6 +64,12 @@ export async function executePythonScript(
     }
 
     const startedAt = Date.now();
+    await logEvent("command.execution.started", {
+        toolName: "executePythonScript",
+        scriptFilename,
+        inputFilename,
+        outputFilename
+    });
 
     try {
         const { stdout, stderr } = await execFileAsync(
@@ -67,6 +86,15 @@ export async function executePythonScript(
             }
         );
 
+        const durationMs = Date.now() - startedAt;
+        await logEvent("command.execution.completed", {
+            toolName: "executePythonScript",
+            exitCode: 0,
+            durationMs,
+            stdoutLength: stdout.length,
+            stderrLength: stderr.length
+        });
+
         return {
             approved: true,
             executed: true,
@@ -74,18 +102,28 @@ export async function executePythonScript(
             stdout,
             stderr,
             timedOut: false,
-            durationMs: Date.now() - startedAt,
+            durationMs,
             outputFilename
         };
     } catch (error) {
+        const durationMs = Date.now() - startedAt;
+        const exitCode = typeof error.code === "number" ? error.code : null;
+        await logEvent("command.execution.completed", {
+            toolName: "executePythonScript",
+            exitCode,
+            durationMs,
+            timedOut: error.killed === true && error.signal === "SIGTERM",
+            stderrPreview: (error.stderr ?? error.message).slice(0, 500)
+        });
+
         return {
             approved: true,
             executed: true,
-            exitCode: typeof error.code === "number" ? error.code : null,
+            exitCode,
             stdout: error.stdout ?? "",
             stderr: error.stderr ?? error.message,
             timedOut: error.killed === true && error.signal === "SIGTERM",
-            durationMs: Date.now() - startedAt,
+            durationMs,
             outputFilename
         };
     }
