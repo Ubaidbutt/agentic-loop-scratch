@@ -13,4 +13,5 @@ export const pythonMemoryLimit = "512m";
 export const pythonCpuLimit = "1";
 export const pythonProcessLimit = 64;
 export const maxGeneratedFileBytes = 100 * 1024 * 1024;
+export const maxReadableFileBytes = 20 * 1024 * 1024;
 export const maxCommandOutputBytes = 1024 * 1024;

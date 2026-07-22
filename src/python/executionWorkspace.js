@@ -5,79 +5,19 @@ import {
     lstat,
     mkdir,
     mkdtemp,
-    realpath,
     readdir,
     rename,
-    rm,
-    stat
+    rm
 } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
-import { dataDir, maxGeneratedFileBytes } from "../config.js";
-import { findDataFile, resolveDataFile } from "../files/dataFileResolver.js";
-
-function isInside(parent, child) {
-    return child === parent || child.startsWith(`${parent}${path.sep}`);
-}
-
-async function findSafeInput(filename) {
-    const filePath = await findDataFile(filename);
-    const [realDataDirectory, realFilePath] = await Promise.all([
-        realpath(dataDir),
-        realpath(filePath)
-    ]);
-
-    if (!isInside(realDataDirectory, realFilePath)) {
-        throw new Error(`File must resolve inside the data directory: ${filename}`);
-    }
-
-    const fileStats = await stat(realFilePath);
-
-    if (!fileStats.isFile()) {
-        throw new Error(`Expected a regular file: ${filename}`);
-    }
-
-    return realFilePath;
-}
-
-async function createSafeOutputDirectory(outputFilename) {
-    const destinationPath = resolveDataFile(outputFilename);
-
-    if (destinationPath === dataDir) {
-        throw new Error("The output filename must identify a file inside the data directory.");
-    }
-
-    const relativeDirectory = path.relative(dataDir, path.dirname(destinationPath));
-    const segments = relativeDirectory === "" ? [] : relativeDirectory.split(path.sep);
-    let currentDirectory = dataDir;
-
-    for (const segment of segments) {
-        currentDirectory = path.join(currentDirectory, segment);
-
-        try {
-            const currentStats = await lstat(currentDirectory);
-
-            if (!currentStats.isDirectory() || currentStats.isSymbolicLink()) {
-                throw new Error(
-                    `Output directories must not contain links or non-directories: ${outputFilename}`
-                );
-            }
-        } catch (error) {
-            if (error.code !== "ENOENT") {
-                throw error;
-            }
-
-            await mkdir(currentDirectory);
-        }
-    }
-
-    return destinationPath;
-}
+import { maxGeneratedFileBytes } from "../config.js";
+import { resolveExistingDataFile, resolveSafeOutputPath } from "../files/dataFileResolver.js";
 
 export async function createExecutionWorkspace(scriptFilename, inputFilename) {
     const [sourceScriptPath, sourceInputPath] = await Promise.all([
-        findSafeInput(scriptFilename),
-        findSafeInput(inputFilename)
+        resolveExistingDataFile(scriptFilename),
+        resolveExistingDataFile(inputFilename)
     ]);
     const root = await mkdtemp(path.join(os.tmpdir(), "agentic-python-"));
     const jobDirectory = path.join(root, "job");
@@ -142,18 +82,8 @@ export async function validateAndPublishOutput(
         );
     }
 
-    const destinationPath = await createSafeOutputDirectory(outputFilename);
+    const destinationPath = await resolveSafeOutputPath(outputFilename);
     const destinationDirectory = path.dirname(destinationPath);
-
-    const [realDataDirectory, realDestinationDirectory] = await Promise.all([
-        realpath(dataDir),
-        realpath(destinationDirectory)
-    ]);
-
-    if (!isInside(realDataDirectory, realDestinationDirectory)) {
-        throw new Error(`Output directory must resolve inside the data directory: ${outputFilename}`);
-    }
-
     const temporaryDestination = path.join(
         destinationDirectory,
         `.agent-output-${randomUUID()}.tmp`

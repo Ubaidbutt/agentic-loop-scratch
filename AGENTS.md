@@ -4,7 +4,7 @@
 
 This is a small Node.js CLI for learning and building an agentic data-migration loop without an LLM framework or SDK. The application sends conversation history and tool definitions to an OpenAI-compatible Chat Completions endpoint, executes requested tools locally, returns each result to the LLM, and continues until the LLM produces a final text response.
 
-The long-term project goals and phases are documented in `README.md` and `project.md`.
+The long-term project goals and phases are documented in `README.md`.
 
 ## Runtime
 

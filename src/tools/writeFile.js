@@ -1,6 +1,7 @@
-import { mkdir, writeFile as fsWriteFile } from "node:fs/promises";
+import { randomUUID } from "node:crypto";
+import { rename, rm, writeFile as fsWriteFile } from "node:fs/promises";
 import path from "node:path";
-import { resolveDataFile } from "../files/dataFileResolver.js";
+import { resolveSafeOutputPath } from "../files/dataFileResolver.js";
 
 export async function writeFile(filename, data) {
     if (
@@ -13,10 +14,16 @@ export async function writeFile(filename, data) {
         );
     }
 
-    const filePath = resolveDataFile(filename);
+    const destinationPath = await resolveSafeOutputPath(filename);
+    const destinationDirectory = path.dirname(destinationPath);
+    const temporaryPath = path.join(destinationDirectory, `.agent-write-${randomUUID()}.tmp`);
 
-    await mkdir(path.dirname(filePath), { recursive: true });
-    await fsWriteFile(filePath, data, "utf8");
+    try {
+        await fsWriteFile(temporaryPath, data, "utf8");
+        await rename(temporaryPath, destinationPath);
+    } finally {
+        await rm(temporaryPath, { force: true });
+    }
 
     return `Wrote ${filename}`;
 }
