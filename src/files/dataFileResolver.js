@@ -2,6 +2,10 @@ import { readdir, stat } from "node:fs/promises";
 import path from "node:path";
 import { dataDir } from "../config.js";
 
+function normalizeFilename(filename) {
+    return filename.toLowerCase().replaceAll(/[\s_-]+/g, "-");
+}
+
 export function resolveDataFile(filename) {
     const filePath = path.resolve(dataDir, filename);
 
@@ -27,12 +31,9 @@ export async function findDataFile(filename) {
         }
     }
 
-    if (path.extname(filename)) {
-        throw new Error(`File not found: ${filename}`);
-    }
-
     const directory = path.dirname(exactPath);
-    const requestedName = path.basename(exactPath).toLowerCase();
+    const requestedFilename = path.basename(exactPath);
+    const requestedName = requestedFilename.toLowerCase();
 
     let entries;
 
@@ -46,10 +47,15 @@ export async function findDataFile(filename) {
         throw error;
     }
 
-    const matches = entries.filter(entry =>
-        entry.isFile() &&
-        entry.name.toLowerCase().startsWith(`${requestedName}.`)
-    );
+    const matches = path.extname(filename)
+        ? entries.filter(entry =>
+            entry.isFile() &&
+            normalizeFilename(entry.name) === normalizeFilename(requestedFilename)
+        )
+        : entries.filter(entry =>
+            entry.isFile() &&
+            entry.name.toLowerCase().startsWith(`${requestedName}.`)
+        );
 
     if (matches.length === 0) {
         throw new Error(`File not found: ${filename}`);
@@ -58,7 +64,7 @@ export async function findDataFile(filename) {
     if (matches.length > 1) {
         const matchingFilenames = matches.map(entry => entry.name).join(", ");
         throw new Error(
-            `Multiple files match "${filename}": ${matchingFilenames}. Specify an extension.`
+            `Multiple files match "${filename}": ${matchingFilenames}. Specify the exact filename.`
         );
     }
 

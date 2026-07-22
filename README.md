@@ -34,6 +34,20 @@ npm start
 
 Enter instructions at the prompt. Type `exit` to end the session. Files used by the agent are read from and written to the local `data/` directory.
 
+## Isolated Python execution
+
+Docker Desktop must be installed and running. Generated Python transformations do not run directly on the host. For each approved execution, the application:
+
+1. Validates the LLM's third-party dependency declarations while rejecting URLs, paths, install flags, markers, and version ranges.
+2. Builds or reuses a dependency image based on a digest-pinned `python:3.13.5-slim-bookworm` image.
+3. Copies only the requested script and input into a temporary workspace.
+4. Runs the transformation as an unprivileged user with no network, a read-only root filesystem, dropped Linux capabilities, and CPU, memory, process, and time limits.
+5. Validates that exactly one regular output file was produced, then atomically copies it into `data/`.
+
+The LLM normally declares package names without guessing versions. The resolver selects packages that provide binary wheels for the pinned Python runtime, captures exact transitive versions, and installs a clean runtime stage from that lock. Source builds are disabled. The dependency-build context contains only a generated Dockerfile and requirements file; it does not contain the transformation script, input data, project files, environment variables, or credentials. Dependency images are cached by the Python image and normalized direct-dependency list, and identical recent build failures are not immediately retried.
+
+Python syntax is checked before dependency preparation. Dependency failures are returned to the agent as concise, stage-specific results while full Docker diagnostics remain in the session log. After ten tool-using rounds, the model receives one final tool-free round so it can report the last outcome instead of terminating with an unhandled round-limit error.
+
 ## Session Logs
 
 Each CLI run creates a structured JSON Lines log in `logs/`. The CLI prints the exact log path when the session starts. Every line is a timestamped event covering the session lifecycle, LLM requests, agent rounds, tool calls, command approvals, command execution, and errors.

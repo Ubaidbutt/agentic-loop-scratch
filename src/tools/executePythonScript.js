@@ -1,27 +1,66 @@
-import { execFile } from "node:child_process";
 import path from "node:path";
-import { promisify } from "node:util";
-import {
-    dataDir,
-    maxCommandOutputBytes,
-    pythonTimeoutMs
-} from "../config.js";
+import { pythonDockerImage } from "../config.js";
 import { readUserInput, writeOutput } from "../cli/terminal.js";
 import { resolveDataFile } from "../files/dataFileResolver.js";
 import { logEvent } from "../logging/sessionLogger.js";
+import { validateExternalDependencies } from "../python/dependencyPolicy.js";
+import {
+    getResolvedDependencies,
+    preparePythonImage,
+    runPythonContainer,
+    validatePythonScript
+} from "../python/dockerPythonRunner.js";
+import {
+    createExecutionWorkspace,
+    removeExecutionWorkspace,
+    validateAndPublishOutput
+} from "../python/executionWorkspace.js";
 
-const execFileAsync = promisify(execFile);
+function failedExecutionResult({
+    externalDependencies,
+    outputFilename,
+    error,
+    environmentPrepared = false
+}) {
+    const failure = {
+        stage: error.stage || "environment_preparation",
+        reason: error.reason || "preparation_failed",
+        dependency: error.dependency || null,
+        message: error.message,
+        retryable: error.retryable ?? true
+    };
+
+    if (error.previousReason) {
+        failure.previousReason = error.previousReason;
+    }
+
+    return {
+        succeeded: false,
+        approved: true,
+        environmentPrepared,
+        executed: false,
+        exitCode: error.exitCode ?? null,
+        stdout: "",
+        stderr: error.message,
+        timedOut: error.timedOut === true,
+        failure,
+        externalDependencies,
+        resolvedDependencies: [],
+        outputFilename
+    };
+}
 
 export async function executePythonScript(
     scriptFilename,
     inputFilename,
-    outputFilename
+    outputFilename,
+    externalDependencies
 ) {
     if (path.extname(scriptFilename).toLowerCase() !== ".py") {
         throw new Error("Only Python scripts ending in .py can be executed.");
     }
 
-    const scriptPath = resolveDataFile(scriptFilename);
+    const normalizedDependencies = validateExternalDependencies(externalDependencies);
     const inputPath = resolveDataFile(inputFilename);
     const outputPath = resolveDataFile(outputFilename);
 
@@ -29,19 +68,25 @@ export async function executePythonScript(
         throw new Error("The output file must be different from the input file.");
     }
 
-    writeOutput("LLM wants to execute this command:");
-    const displayedArguments = [scriptFilename, inputFilename, outputFilename]
-        .map(argument => JSON.stringify(argument))
-        .join(" ");
-    writeOutput(`python3 ${displayedArguments}`);
+    writeOutput("LLM wants to prepare and execute an isolated Python transformation:");
+    writeOutput(`  Runtime: ${pythonDockerImage}`);
+    writeOutput(`  Script: ${scriptFilename}`);
+    writeOutput(`  Input: ${inputFilename} (read-only)`);
+    writeOutput(`  Output: ${outputFilename}`);
+    writeOutput(
+        `  External dependencies: ${normalizedDependencies.join(", ") || "none"}`
+    );
+    writeOutput("  Transformation network: disabled");
     await logEvent("command.approval.requested", {
         toolName: "executePythonScript",
         scriptFilename,
         inputFilename,
-        outputFilename
+        outputFilename,
+        externalDependencies: normalizedDependencies,
+        pythonDockerImage
     });
 
-    const approval = (await readUserInput("Allow this command? [y/N] "))
+    const approval = (await readUserInput("Allow dependency preparation and execution? [y/N] "))
         .trim()
         .toLowerCase();
     const approved = approval === "y" || approval === "yes";
@@ -53,79 +98,203 @@ export async function executePythonScript(
 
     if (!approved) {
         return {
+            succeeded: false,
             approved: false,
+            environmentPrepared: false,
             executed: false,
             exitCode: null,
             stdout: "",
-            stderr: "Command execution was denied by the user.",
+            stderr: "Dependency preparation and command execution were denied by the user.",
             timedOut: false,
+            externalDependencies: normalizedDependencies,
+            resolvedDependencies: [],
             outputFilename
         };
     }
 
+    let workspace;
     const startedAt = Date.now();
-    await logEvent("command.execution.started", {
-        toolName: "executePythonScript",
-        scriptFilename,
-        inputFilename,
-        outputFilename
-    });
 
     try {
-        const { stdout, stderr } = await execFileAsync(
-            "python3",
-            [scriptPath, inputPath, outputPath],
-            {
-                cwd: dataDir,
-                timeout: pythonTimeoutMs,
-                maxBuffer: maxCommandOutputBytes,
-                env: {
-                    PATH: "/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin",
-                    LANG: "C.UTF-8"
-                }
-            }
-        );
+        workspace = await createExecutionWorkspace(scriptFilename, inputFilename);
+        await logEvent("python.environment.preparation.started", {
+            toolName: "executePythonScript",
+            externalDependencies: normalizedDependencies,
+            pythonDockerImage
+        });
 
-        const durationMs = Date.now() - startedAt;
+        let preparedImage;
+
+        try {
+            await preparePythonImage([], workspace.buildDirectory);
+            const scriptValidation = await validatePythonScript(workspace.scriptPath);
+
+            if (!scriptValidation.valid) {
+                await logEvent("python.script.validation.failed", {
+                    toolName: "executePythonScript",
+                    reason: scriptValidation.reason,
+                    error: scriptValidation.message
+                });
+
+                return {
+                    succeeded: false,
+                    approved: true,
+                    environmentPrepared: true,
+                    executed: false,
+                    exitCode: null,
+                    stdout: "",
+                    stderr: scriptValidation.message,
+                    timedOut: false,
+                    failure: {
+                        stage: scriptValidation.stage,
+                        reason: scriptValidation.reason,
+                        dependency: null,
+                        message: scriptValidation.message,
+                        retryable: false
+                    },
+                    externalDependencies: normalizedDependencies,
+                    resolvedDependencies: [],
+                    outputFilename
+                };
+            }
+
+            preparedImage = await preparePythonImage(
+                normalizedDependencies,
+                workspace.buildDirectory
+            );
+        } catch (error) {
+            await logEvent("python.environment.preparation.failed", {
+                toolName: "executePythonScript",
+                durationMs: Date.now() - startedAt,
+                error: error.message,
+                stage: error.stage,
+                reason: error.reason,
+                dependency: error.dependency,
+                diagnostics: error.diagnostics
+            });
+
+            return failedExecutionResult({
+                externalDependencies: normalizedDependencies,
+                outputFilename,
+                error
+            });
+        }
+
+        const resolvedDependencies = normalizedDependencies.length === 0
+            ? []
+            : await getResolvedDependencies(preparedImage.image);
+        await logEvent("python.environment.preparation.completed", {
+            toolName: "executePythonScript",
+            image: preparedImage.image,
+            cached: preparedImage.cached,
+            resolvedDependencies
+        });
+        await logEvent("command.execution.started", {
+            toolName: "executePythonScript",
+            scriptFilename,
+            inputFilename,
+            outputFilename,
+            image: preparedImage.image,
+            network: "none"
+        });
+
+        const executionStartedAt = Date.now();
+        const execution = await runPythonContainer({
+            image: preparedImage.image,
+            scriptPath: workspace.scriptPath,
+            inputPath: workspace.inputPath,
+            outputDirectory: workspace.outputDirectory,
+            outputExtension: path.extname(outputFilename)
+        });
+        const durationMs = Date.now() - executionStartedAt;
+
+        if (execution.exitCode !== 0) {
+            await logEvent("command.execution.completed", {
+                toolName: "executePythonScript",
+                exitCode: execution.exitCode,
+                durationMs,
+                timedOut: execution.timedOut,
+                stderrPreview: execution.stderr.slice(0, 500)
+            });
+
+            return {
+                succeeded: false,
+                approved: true,
+                environmentPrepared: true,
+                executed: true,
+                exitCode: execution.exitCode,
+                stdout: execution.stdout,
+                stderr: execution.stderr,
+                timedOut: execution.timedOut,
+                durationMs,
+                externalDependencies: normalizedDependencies,
+                resolvedDependencies,
+                outputFilename
+            };
+        }
+
+        let publishedOutput;
+
+        try {
+            publishedOutput = await validateAndPublishOutput(
+                execution.outputPath,
+                workspace.outputDirectory,
+                outputFilename
+            );
+        } catch (error) {
+            await logEvent("command.output.rejected", {
+                toolName: "executePythonScript",
+                error: error.message
+            });
+
+            return {
+                succeeded: false,
+                approved: true,
+                environmentPrepared: true,
+                executed: true,
+                exitCode: 0,
+                stdout: execution.stdout,
+                stderr: `Execution succeeded but output validation failed: ${error.message}`,
+                timedOut: false,
+                durationMs,
+                externalDependencies: normalizedDependencies,
+                resolvedDependencies,
+                outputFilename
+            };
+        }
+
         await logEvent("command.execution.completed", {
             toolName: "executePythonScript",
             exitCode: 0,
             durationMs,
-            stdoutLength: stdout.length,
-            stderrLength: stderr.length
+            outputFilename,
+            outputBytes: publishedOutput.outputBytes
         });
 
         return {
+            succeeded: true,
             approved: true,
+            environmentPrepared: true,
             executed: true,
             exitCode: 0,
-            stdout,
-            stderr,
+            stdout: execution.stdout,
+            stderr: execution.stderr,
             timedOut: false,
             durationMs,
-            outputFilename
+            externalDependencies: normalizedDependencies,
+            resolvedDependencies,
+            outputFilename,
+            outputBytes: publishedOutput.outputBytes
         };
-    } catch (error) {
-        const durationMs = Date.now() - startedAt;
-        const exitCode = typeof error.code === "number" ? error.code : null;
-        await logEvent("command.execution.completed", {
-            toolName: "executePythonScript",
-            exitCode,
-            durationMs,
-            timedOut: error.killed === true && error.signal === "SIGTERM",
-            stderrPreview: (error.stderr ?? error.message).slice(0, 500)
-        });
-
-        return {
-            approved: true,
-            executed: true,
-            exitCode,
-            stdout: error.stdout ?? "",
-            stderr: error.stderr ?? error.message,
-            timedOut: error.killed === true && error.signal === "SIGTERM",
-            durationMs,
-            outputFilename
-        };
+    } finally {
+        try {
+            await removeExecutionWorkspace(workspace);
+        } catch (error) {
+            await logEvent("python.workspace.cleanup.failed", {
+                toolName: "executePythonScript",
+                error: error.message
+            });
+        }
     }
 }
 
@@ -134,7 +303,7 @@ export const executePythonScriptTool = {
         type: "function",
         function: {
             name: "executePythonScript",
-            description: "Request user approval, then execute a Python 3 data-transformation script from the data directory. The script receives the input and output file paths as its first and second command-line arguments. If the user denies permission, the script is not executed.",
+            description: "Request user approval, prepare a dependency-specific Docker image, and execute a Python data-transformation script in an offline, resource-limited container. The input and script are mounted read-only, and only the validated output is copied back to the data directory.",
             parameters: {
                 type: "object",
                 properties: {
@@ -148,10 +317,21 @@ export const executePythonScriptTool = {
                     },
                     outputFilename: {
                         type: "string",
-                        description: "The output file the script should create in the data directory. It must differ from the input filename."
+                        description: "The output file to create in the data directory. It must differ from the input filename."
+                    },
+                    externalDependencies: {
+                        type: "array",
+                        description: "Third-party Python distributions required by the script, such as pandas. Usually omit versions so the runtime can select compatible binary packages. Use exact pins only when required. Do not list standard-library modules. Use an empty array when none are required.",
+                        items: { type: "string" },
+                        maxItems: 20
                     }
                 },
-                required: ["scriptFilename", "inputFilename", "outputFilename"],
+                required: [
+                    "scriptFilename",
+                    "inputFilename",
+                    "outputFilename",
+                    "externalDependencies"
+                ],
                 additionalProperties: false
             }
         }

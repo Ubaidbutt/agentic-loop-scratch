@@ -6,7 +6,7 @@ import {
 } from "../runtime/toolRuntime.js";
 import { logEvent } from "../logging/sessionLogger.js";
 
-const MAX_TOOL_CALL_ROUNDS = 5;
+const MAX_TOOL_CALL_ROUNDS = 10;
 const toolDefinitions = getToolDefinitions();
 
 function getAssistantMessage(response) {
@@ -23,7 +23,11 @@ function getAssistantText(response) {
     return response?.choices?.[0]?.message?.content ?? JSON.stringify(response, null, 2);
 }
 
-export async function runConversationTurn(conversation) {
+export async function runConversationTurn(conversation, {
+    llmCaller = callLLM,
+    availableTools = toolDefinitions,
+    toolExecutor = executeToolCall
+} = {}) {
     for (let round = 0; round < MAX_TOOL_CALL_ROUNDS; round += 1) {
         const roundNumber = round + 1;
         await logEvent("agent.round.started", {
@@ -31,7 +35,7 @@ export async function runConversationTurn(conversation) {
             messageCount: conversation.length
         });
 
-        const response = await callLLM(conversation, toolDefinitions);
+        const response = await llmCaller(conversation, availableTools);
         const assistantMessage = getAssistantMessage(response);
 
         conversation.push(assistantMessage);
@@ -50,7 +54,7 @@ export async function runConversationTurn(conversation) {
         }
 
         for (const toolCall of assistantMessage.tool_calls) {
-            const toolResult = await executeToolCall(toolCall);
+            const toolResult = await toolExecutor(toolCall);
 
             conversation.push({
                 role: "tool",
@@ -60,5 +64,25 @@ export async function runConversationTurn(conversation) {
         }
     }
 
-    throw new Error("Reached maximum tool-call rounds without a final LLM response.");
+    const finalRoundNumber = MAX_TOOL_CALL_ROUNDS + 1;
+    await logEvent("agent.final-response.started", {
+        round: finalRoundNumber,
+        messageCount: conversation.length,
+        reason: "maximum_tool_rounds_reached"
+    });
+
+    // Give the model one tool-free call to explain the outcome instead of
+    // discarding the result of the final permitted tool execution.
+    const response = await llmCaller(conversation, []);
+    const assistantMessage = getAssistantMessage(response);
+    conversation.push(assistantMessage);
+
+    await logEvent("assistant.message", {
+        round: finalRoundNumber,
+        content: assistantMessage.content ?? null,
+        requestedTools: [],
+        toolsAvailable: false
+    });
+
+    return getAssistantText(response);
 }

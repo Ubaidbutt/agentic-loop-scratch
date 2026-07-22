@@ -13,27 +13,33 @@ try {
 
 const LLM_URL = process.env.LLM_URL || "https://api.openai.com/v1/chat/completions";
 const API_KEY = process.env.OPENAI_API_KEY;
+const MODEL_NAME = process.env.LLM_MODEL_NAME || "gpt-4o-mini";
 
 export async function callLLM(messages, tools = []) {
     const startedAt = Date.now();
     await logEvent("llm.request.started", {
         messageCount: messages.length,
         toolCount: tools.length,
-        model: "gpt-4o-mini"
+        model: MODEL_NAME
     });
 
     try {
+        const requestBody = {
+            model: MODEL_NAME,
+            messages
+        };
+
+        if (tools.length > 0) {
+            requestBody.tools = tools;
+        }
+
         const response = await fetch(LLM_URL, {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",
                 "Authorization": `Bearer ${API_KEY}`
             },
-            body: JSON.stringify({
-                model: "gpt-4o-mini",
-                messages,
-                tools
-            })
+            body: JSON.stringify(requestBody)
         });
 
         const data = await response.json();
