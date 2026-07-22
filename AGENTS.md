@@ -20,20 +20,22 @@ There is currently no automated test suite. At minimum, run syntax checks on cha
 
 ## File Responsibilities
 
-- `index.js`: Owns the CLI session, in-memory conversation history, and turn-level error handling.
-- `terminal.js`: Reads user input, writes terminal output, and closes the readline interface.
-- `conversation.js`: Runs the LLM/tool-call loop and appends assistant and tool messages to the conversation.
-- `llmCall.js`: Loads environment variables and makes the raw HTTP request to the LLM endpoint.
-- `toolRuntime.js`: Converts registry entries to LLM tool definitions, parses tool calls, executes tools, and serializes results.
-- `tools.js`: Implements local tools and exports the tool registry.
+- `src/index.js`: Owns the CLI session, in-memory conversation history, and turn-level error handling.
+- `src/config.js`: Defines shared project paths and execution limits.
+- `src/cli/terminal.js`: Reads user input, writes terminal output, and closes the readline interface.
+- `src/agent/conversation.js`: Runs the LLM/tool-call loop and appends assistant and tool messages to the conversation.
+- `src/agent/systemPrompt.js`: Defines the data-transformation agent's behavior and workflow.
+- `src/llm/llmCall.js`: Loads environment variables and makes the raw HTTP request to the LLM endpoint.
+- `src/runtime/toolRuntime.js`: Converts registry entries to LLM tool definitions, parses tool calls, executes tools, and serializes results.
+- `src/tools/`: Contains individual local tool implementations, shared data-file path helpers, and the tool registry.
 - `data/`: Contains files available to local tools. This directory is intentionally ignored by Git.
 
 ## Tool Conventions
 
-Register each tool in `toolRegistry` with both an OpenAI-compatible function definition and its local `execute` function. The schema's `required` array must list parameters in the same order expected by the JavaScript function because the runtime currently invokes tools with positional arguments.
+Register each tool in `src/tools/registry.js` with both an OpenAI-compatible function definition and its local `execute` function. The schema's `required` array must list parameters in the same order expected by the JavaScript function because the runtime currently invokes tools with positional arguments.
 
 Tool failures should be returned to the LLM as structured results instead of terminating the conversation. Keep all file access inside the project `data/` directory and do not expose environment variables or credentials through tools or logs.
 
 ## Change Guidelines
 
-Keep `index.js` lean and place new behavior in the module that owns that responsibility. Preserve conversation messages in OpenAI Chat Completions format, avoid adding framework abstractions unless the project requirements change, and never commit `.env`, `node_modules/`, or files under `data/`.
+Keep `src/index.js` lean and place new behavior in the module that owns that responsibility. Preserve conversation messages in OpenAI Chat Completions format, avoid adding framework abstractions unless the project requirements change, and never commit `.env`, `node_modules/`, or files under `data/`.

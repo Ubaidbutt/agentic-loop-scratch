@@ -1,4 +1,4 @@
-import { toolRegistry } from "./tools.js";
+import { toolRegistry } from "../tools/registry.js";
 
 export function getToolDefinitions() {
     return Object.values(toolRegistry).map(tool => tool.definition);

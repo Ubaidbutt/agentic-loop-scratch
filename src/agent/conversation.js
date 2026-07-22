@@ -1,9 +1,9 @@
-import { callLLM } from "./llmCall.js";
+import { callLLM } from "../llm/llmCall.js";
 import {
     executeToolCall,
     getToolDefinitions,
     stringifyToolResult
-} from "./toolRuntime.js";
+} from "../runtime/toolRuntime.js";
 
 const MAX_TOOL_CALL_ROUNDS = 5;
 const toolDefinitions = getToolDefinitions();
