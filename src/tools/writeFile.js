@@ -1,6 +1,6 @@
 import { mkdir, writeFile as fsWriteFile } from "node:fs/promises";
 import path from "node:path";
-import { resolveDataFile } from "./dataFiles.js";
+import { resolveDataFile } from "../files/dataFileResolver.js";
 
 export async function writeFile(filename, data) {
     const filePath = resolveDataFile(filename);

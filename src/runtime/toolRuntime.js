@@ -1,5 +1,5 @@
-import { toolRegistry } from "../tools/registry.js";
 import { logEvent } from "../logging/sessionLogger.js";
+import { toolRegistry } from "./toolRegistry.js";
 
 export function getToolDefinitions() {
     return Object.values(toolRegistry).map(tool => tool.definition);

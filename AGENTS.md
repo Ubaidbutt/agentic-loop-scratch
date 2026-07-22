@@ -25,16 +25,18 @@ There is currently no automated test suite. At minimum, run syntax checks on cha
 - `src/cli/terminal.js`: Reads user input, writes terminal output, and closes the readline interface.
 - `src/agent/conversation.js`: Runs the LLM/tool-call loop and appends assistant and tool messages to the conversation.
 - `src/agent/systemPrompt.js`: Defines the data-transformation agent's behavior and workflow.
+- `src/files/dataFileResolver.js`: Resolves and locates files while enforcing the `data/` directory boundary.
 - `src/llm/llmCall.js`: Loads environment variables and makes the raw HTTP request to the LLM endpoint.
 - `src/logging/sessionLogger.js`: Writes concise live progress to the console and persistent structured session events to `logs/`.
+- `src/runtime/toolRegistry.js`: Collects and exposes the tools available to the LLM.
 - `src/runtime/toolRuntime.js`: Converts registry entries to LLM tool definitions, parses tool calls, executes tools, and serializes results.
-- `src/tools/`: Contains individual local tool implementations, shared data-file path helpers, and the tool registry.
+- `src/tools/`: Contains only the individual tools exposed to the LLM.
 - `data/`: Contains files available to local tools. This directory is intentionally ignored by Git.
 - `logs/`: Contains per-session JSON Lines audit logs. This directory is intentionally ignored by Git.
 
 ## Tool Conventions
 
-Register each tool in `src/tools/registry.js` with both an OpenAI-compatible function definition and its local `execute` function. The schema's `required` array must list parameters in the same order expected by the JavaScript function because the runtime currently invokes tools with positional arguments.
+Register each tool in `src/runtime/toolRegistry.js` with both an OpenAI-compatible function definition and its local `execute` function. The schema's `required` array must list parameters in the same order expected by the JavaScript function because the runtime currently invokes tools with positional arguments.
 
 Tool failures should be returned to the LLM as structured results instead of terminating the conversation. Keep all file access inside the project `data/` directory and do not expose environment variables or credentials through tools or logs.
 

@@ -1,5 +1,5 @@
 import { readFile as fsReadFile } from "node:fs/promises";
-import { findDataFile } from "./dataFiles.js";
+import { findDataFile } from "../files/dataFileResolver.js";
 
 export async function readFile(filename) {
     const filePath = await findDataFile(filename);

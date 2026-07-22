@@ -7,8 +7,8 @@ import {
     pythonTimeoutMs
 } from "../config.js";
 import { readUserInput, writeOutput } from "../cli/terminal.js";
+import { resolveDataFile } from "../files/dataFileResolver.js";
 import { logEvent } from "../logging/sessionLogger.js";
-import { resolveDataFile } from "./dataFiles.js";
 
 const execFileAsync = promisify(execFile);
 
