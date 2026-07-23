@@ -33,12 +33,18 @@ export const writeFileTool = {
         type: "function",
         function: {
             name: "writeFile",
-            description: "Write data to a file in the data directory.",
+            description: "Write one UTF-8 text file directly into the data directory. Use this for transformation scripts, small generated text files, or final outputs that do not require isolated execution. This tool writes exactly the requested filename; it does not execute code. For Python scripts, data must contain real newline characters, not escaped \\n sequences. Do not use this to write outside data/.",
             parameters: {
                 type: "object",
                 properties: {
-                    filename: { type: "string" },
-                    data: { type: "string" }
+                    filename: {
+                        type: "string",
+                        description: "Output filename to create or replace in data/. Include the intended extension, such as transform.py or report.json."
+                    },
+                    data: {
+                        type: "string",
+                        description: "Complete UTF-8 file contents to write. For .py files, include actual newline characters."
+                    }
                 },
                 required: ["filename", "data"],
                 additionalProperties: false

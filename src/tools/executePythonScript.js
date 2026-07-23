@@ -303,25 +303,25 @@ export const executePythonScriptTool = {
         type: "function",
         function: {
             name: "executePythonScript",
-            description: "Request user approval, prepare a dependency-specific Docker image, and execute a Python data-transformation script in an offline, resource-limited container. The input and script are mounted read-only, and only the validated output is copied back to the data directory.",
+            description: "Request user approval, prepare a dependency-specific Docker image, and execute one Python data-transformation script in an offline, resource-limited container. Use this for transformations that need computation in Python and can publish one output artifact per execution. Contract: the script file and input file are read-only; the container filesystem is read-only except for the provided output path; the script receives exactly two arguments, sys.argv[1] for input and sys.argv[2] for output; the script must create exactly one regular file at sys.argv[2]. Treat sys.argv[2] as the complete output file path, not as a directory. Do not write to the current working directory or create side files. Only the validated sys.argv[2] artifact is copied back to data/. If the requested result needs more than one artifact, choose a compatible plan before execution, such as separate tool calls, a single archive artifact, or asking the user which representation they prefer.",
             parameters: {
                 type: "object",
                 properties: {
                     scriptFilename: {
                         type: "string",
-                        description: "The .py script to execute from the data directory."
+                        description: "Name of an existing .py script in data/ to execute. Write it first with writeFile. The script must read sys.argv[1] and write exactly one output file to sys.argv[2]."
                     },
                     inputFilename: {
                         type: "string",
-                        description: "The input data file from the data directory."
+                        description: "Name of the existing input data file in data/. It is mounted read-only for the script."
                     },
                     outputFilename: {
                         type: "string",
-                        description: "The output file to create in the data directory. It must differ from the input filename."
+                        description: "Name of the single output file to publish into data/. It must differ from the input filename and should include an extension such as .json, .csv, or .zip. This is a file name, not a directory name. Inside Python, write to sys.argv[2] exactly."
                     },
                     externalDependencies: {
                         type: "array",
-                        description: "Third-party Python distributions required by the script, such as pandas. Usually omit versions so the runtime can select compatible binary packages. Use exact pins only when required. Do not list standard-library modules. Use an empty array when none are required.",
+                        description: "Third-party Python distributions required by the script, such as pandas. Usually omit versions so the runtime can select compatible binary packages. Use exact pins only when required. Do not list standard-library modules like json, csv, datetime, decimal, pathlib, or zipfile. Use an empty array when none are required.",
                         items: { type: "string" },
                         maxItems: 20
                     }

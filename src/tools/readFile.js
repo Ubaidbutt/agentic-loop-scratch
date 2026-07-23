@@ -26,11 +26,14 @@ export const readFileTool = {
         type: "function",
         function: {
             name: "readFile",
-            description: "Read a text file from the data directory. The filename extension may be omitted.",
+            description: "Read an existing UTF-8 text file from the data directory. Use this before transforming data so you can inspect the real schema and values. This tool cannot read files outside data/, cannot read binary files, and does not create or modify files. The filename extension may be omitted only when it still resolves to one existing data file.",
             parameters: {
                 type: "object",
                 properties: {
-                    filename: { type: "string" }
+                    filename: {
+                        type: "string",
+                        description: "Name of the existing file to read from data/. Do not include paths outside data/."
+                    }
                 },
                 required: ["filename"],
                 additionalProperties: false

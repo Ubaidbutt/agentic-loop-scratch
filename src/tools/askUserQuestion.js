@@ -29,17 +29,17 @@ export const askUserQuestionTool = {
         type: "function",
         function: {
             name: "askUserQuestion",
-            description: "Ask the user a clarification question, optionally with suggested answers.",
+            description: "Ask the user for a clarification when a requirement, data interpretation, output shape, validation policy, or execution plan is ambiguous and cannot be inferred safely. Use this before acting when guessing could change results, discard data, overwrite data, or choose an incompatible tool workflow. Prefer concise questions; include suggested options only when they cover the realistic choices.",
             parameters: {
                 type: "object",
                 properties: {
                     question: {
                         type: "string",
-                        description: "The question to ask the user."
+                        description: "The specific clarification to ask. Mention the ambiguous field, rule, output expectation, validation policy, or tool/workflow choice."
                     },
                     options: {
                         type: "array",
-                        description: "Suggested answers. Pass an empty array for a free-form question.",
+                        description: "Suggested answers. Pass an empty array for a free-form answer when the user needs to provide a policy, formula, date, or other detailed rule.",
                         items: {
                             type: "string"
                         },
