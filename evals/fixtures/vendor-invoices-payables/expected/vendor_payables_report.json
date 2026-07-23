@@ -1,0 +1,41 @@
+[
+  {
+    "vendor_id": "V-001",
+    "vendor_name": "Northstar Apps",
+    "invoice_count": 3,
+    "open_invoice_count": 1,
+    "paid_invoice_count": 1,
+    "credit_memo_count": 1,
+    "late_invoice_count": 2,
+    "total_usd": 1916.0,
+    "max_days_late": 5,
+    "review_flag": true,
+    "included_record_ids": ["A-001", "A-002", "A-012"]
+  },
+  {
+    "vendor_id": "V-002",
+    "vendor_name": "Metro Catering",
+    "invoice_count": 1,
+    "open_invoice_count": 1,
+    "paid_invoice_count": 0,
+    "credit_memo_count": 0,
+    "late_invoice_count": 1,
+    "total_usd": 280.8,
+    "max_days_late": 17,
+    "review_flag": true,
+    "included_record_ids": ["A-004"]
+  },
+  {
+    "vendor_id": "V-005",
+    "vendor_name": "Harbor Office",
+    "invoice_count": 1,
+    "open_invoice_count": 0,
+    "paid_invoice_count": 1,
+    "credit_memo_count": 0,
+    "late_invoice_count": 0,
+    "total_usd": 1495.0,
+    "max_days_late": 0,
+    "review_flag": false,
+    "included_record_ids": ["A-010"]
+  }
+]

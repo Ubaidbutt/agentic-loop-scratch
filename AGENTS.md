@@ -16,7 +16,7 @@ The long-term project goals and phases are documented in `README.md`.
 - `LLM_URL` can optionally override the default OpenAI endpoint.
 - Type `exit` in the CLI to end the current session.
 
-There is currently no automated test suite. At minimum, run syntax checks on changed JavaScript files and use `printf 'exit\n' | npm start` as a non-network smoke test.
+There is no unit test suite. `npm run eval` runs real, billed end-to-end regression cases against the live agent (see "Evaluations" in `README.md`) — use it to check whether a change actually moved agent behavior, not as a pre-commit gate. At minimum on every change, run syntax checks on changed JavaScript files and use `printf 'exit\n' | npm start` as a non-network smoke test.
 
 ## File Responsibilities
 
@@ -33,6 +33,7 @@ There is currently no automated test suite. At minimum, run syntax checks on cha
 - `src/tools/`: Contains only the individual tools exposed to the LLM.
 - `data/`: Contains files available to local tools. This directory is intentionally ignored by Git.
 - `logs/`: Contains per-session JSON Lines audit logs. This directory is intentionally ignored by Git.
+- `evals/`: End-to-end regression tests that run the real agent (real LLM calls, real Docker execution) against fixture files and grade its output against golden answers. See the "Evaluations" section in `README.md`. Unlike `data/` and `logs/`, `evals/fixtures/` and `evals/cases/` are git-tracked — they are test assets, not working files.
 
 ## Tool Conventions
 

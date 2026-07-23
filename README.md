@@ -48,6 +48,37 @@ The LLM normally declares package names without guessing versions. The resolver 
 
 Python syntax is checked before dependency preparation. Dependency failures are returned to the agent as concise, stage-specific results while full Docker diagnostics remain in the session log. After ten tool-using rounds, the model receives one final tool-free round so it can report the last outcome instead of terminating with an unhandled round-limit error.
 
+## Evaluations
+
+`evals/` holds end-to-end regression tests for the agent itself: each case gives
+the agent a real input file and prompt, lets it run for real (real LLM calls,
+real Docker execution, real clarifying questions), and grades the files it
+produces against a hand-verified golden answer key. Run them with:
+
+```sh
+npm run eval
+```
+
+or a single case by name: `npm run eval -- vendorInvoicesPayables`.
+
+Each case runs in its own temporary sandbox directory (via `DATA_DIR`), never
+touching the real `data/` directory, and answers the agent's `askUserQuestion`
+calls using a second LLM that plays "the user," grounded in a written policy
+doc for that case (`evals/fixtures/<case>/policy.md`). The Python-execution
+approval prompt is auto-approved. A case passes only when every expected
+output file exists and matches the golden fixture on the graded fields.
+
+This makes real, billed LLM calls and runs Docker containers, so it costs a
+small amount and takes a bit of time — expect it to take a couple of minutes
+and a few cents at the default model. Because it's a real model, occasional
+non-determinism across runs is expected; treat a single failure as a signal
+to look closer, not as certain proof of a regression.
+
+To add a case: create a fixtures folder under `evals/fixtures/<case-id>/`
+(input file(s), `prompt.txt`, `policy.md`, and an `expected/` folder with
+golden output files), then add a case definition in `evals/cases/` describing
+which fields to grade and how (`exact`, `numeric`, `set`, or `ignore`).
+
 ## Session Logs
 
 Each CLI run creates a structured JSON Lines log in `logs/`. The CLI prints the exact log path when the session starts. Every line is a timestamped event covering the session lifecycle, LLM requests, agent rounds, tool calls, command approvals, command execution, and errors.

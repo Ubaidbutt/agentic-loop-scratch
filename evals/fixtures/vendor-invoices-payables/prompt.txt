@@ -1,0 +1,24 @@
+Please transform messy_vendor_invoices.json into two files:
+
+1. vendor_payables_report.json
+2. rejected_vendor_invoices.json
+
+For vendor_payables_report.json, create one record per vendor with:
+- vendor_id
+- vendor_name
+- invoice_count
+- open_invoice_count
+- paid_invoice_count
+- credit_memo_count
+- late_invoice_count
+- total_usd
+- max_days_late
+- review_flag
+- included_record_ids
+
+For rejected_vendor_invoices.json, create one record for every source record that is not included in the report, with:
+- record_id
+- reason
+- detail
+
+This input is intentionally dirty. Read the file first and ask me clarifying questions before transforming it. Important policy choices are intentionally missing, including duplicate handling, invalid rows, date parsing, currency conversion, approval handling, credits, late logic, rounding, and output sorting.

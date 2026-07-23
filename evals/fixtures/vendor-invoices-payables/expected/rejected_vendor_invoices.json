@@ -1,0 +1,37 @@
+[
+  {
+    "record_id": "A-003",
+    "reason": "duplicate_superseded",
+    "detail": "Same vendor_id and normalized invoice_number as A-004; kept the record with the latest updated_at."
+  },
+  {
+    "record_id": "A-005",
+    "reason": "missing_vendor_id",
+    "detail": "vendor_id is blank."
+  },
+  {
+    "record_id": "A-006",
+    "reason": "unsupported_currency",
+    "detail": "JPY is not in the provided offline FX table."
+  },
+  {
+    "record_id": "A-007",
+    "reason": "invalid_date",
+    "detail": "invoice_date is not a real calendar date: 2026-02-30."
+  },
+  {
+    "record_id": "A-008",
+    "reason": "not_approved",
+    "detail": "approved is false."
+  },
+  {
+    "record_id": "A-009",
+    "reason": "invalid_amount",
+    "detail": "amount_cents is not numeric: bad."
+  },
+  {
+    "record_id": "A-011",
+    "reason": "missing_invoice_number",
+    "detail": "invoice_number is blank after trimming."
+  }
+]
