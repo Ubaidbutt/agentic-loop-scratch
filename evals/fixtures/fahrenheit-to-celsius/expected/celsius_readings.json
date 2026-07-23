@@ -1,0 +1,8 @@
+[
+  { "reading_id": "R-1", "city": "Denver", "celsius": 0.0 },
+  { "reading_id": "R-2", "city": "Miami", "celsius": 32.0 },
+  { "reading_id": "R-3", "city": "Anchorage", "celsius": -20.0 },
+  { "reading_id": "R-4", "city": "Phoenix", "celsius": 40.0 },
+  { "reading_id": "R-5", "city": "Seattle", "celsius": 10.0 },
+  { "reading_id": "R-6", "city": "Chicago", "celsius": 22.5 }
+]

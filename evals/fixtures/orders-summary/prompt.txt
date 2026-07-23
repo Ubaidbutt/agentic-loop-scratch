@@ -1,0 +1,13 @@
+Transform orders.csv into customer_order_summary.json.
+
+Group the rows by customer_id and produce one JSON record per customer with:
+- customer_id
+- customer_name
+- order_count: the number of order rows for that customer
+- total_amount: the sum of that customer's order amounts, rounded to 2 decimal places
+
+The amount column is formatted like "$120.50" -- strip the currency symbol before summing.
+
+Every row belongs to exactly one customer and every field is present and well-formed, so there is nothing to validate or reject in this file.
+
+This instruction is complete -- you should not need to ask me any clarifying questions.

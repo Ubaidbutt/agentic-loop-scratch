@@ -1,0 +1,5 @@
+Transform readings.json into celsius_readings.json.
+
+For each record, keep reading_id and city unchanged, and replace the fahrenheit field with a celsius field computed using the standard formula celsius = (fahrenheit - 32) * 5 / 9, rounded to 1 decimal place. Keep every record from the input file; don't drop, merge, or reorder any of them.
+
+This instruction is complete -- you should not need to ask me any clarifying questions.

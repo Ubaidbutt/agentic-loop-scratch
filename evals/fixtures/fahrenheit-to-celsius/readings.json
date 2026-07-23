@@ -1,0 +1,8 @@
+[
+  { "reading_id": "R-1", "city": "Denver", "fahrenheit": 32 },
+  { "reading_id": "R-2", "city": "Miami", "fahrenheit": 89.6 },
+  { "reading_id": "R-3", "city": "Anchorage", "fahrenheit": -4 },
+  { "reading_id": "R-4", "city": "Phoenix", "fahrenheit": 104 },
+  { "reading_id": "R-5", "city": "Seattle", "fahrenheit": 50 },
+  { "reading_id": "R-6", "city": "Chicago", "fahrenheit": 72.5 }
+]

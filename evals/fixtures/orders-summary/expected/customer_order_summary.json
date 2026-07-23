@@ -1,0 +1,5 @@
+[
+  { "customer_id": "C-1", "customer_name": "Ada Lovelace", "order_count": 3, "total_amount": 170.49 },
+  { "customer_id": "C-2", "customer_name": "Grace Hopper", "order_count": 2, "total_amount": 91.0 },
+  { "customer_id": "C-3", "customer_name": "Alan Turing", "order_count": 1, "total_amount": 200.0 }
+]

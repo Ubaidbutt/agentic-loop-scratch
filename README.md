@@ -61,6 +61,15 @@ npm run eval
 
 or a single case by name: `npm run eval -- vendorInvoicesPayables`.
 
+Cases form a difficulty ladder, from a pure happy-path smoke test up to the
+kind of messy, ambiguous request the agent is ultimately meant to handle:
+
+| Case | What it exercises |
+| --- | --- |
+| `fahrenheit-to-celsius` | Simplest possible transformation: one input file, one deterministic per-record formula, fully specified in the prompt. No ambiguity, no clarifying questions expected. Checks the straightforward happy path. |
+| `orders-summary` | A step up: CSV input, light string cleanup (stripping a `$` prefix), and a group-by-sum aggregation into one JSON output. Still fully specified, no ambiguity. |
+| `vendor-invoices-payables` | The hard case: two output files, real validation/rejection logic, currency conversion, date/lateness rules, and deliberately missing policy decisions that require the agent to ask clarifying questions before it can proceed. |
+
 Each case runs in its own temporary sandbox directory (via `DATA_DIR`), never
 touching the real `data/` directory, and answers the agent's `askUserQuestion`
 calls using a second LLM that plays "the user," grounded in a written policy

@@ -1,0 +1,7 @@
+customer_id,customer_name,order_id,amount
+C-1,Ada Lovelace,O-100,$120.50
+C-1,Ada Lovelace,O-101,$40.00
+C-2,Grace Hopper,O-102,$75.25
+C-3,Alan Turing,O-103,$200.00
+C-2,Grace Hopper,O-104,$15.75
+C-1,Ada Lovelace,O-105,$9.99
