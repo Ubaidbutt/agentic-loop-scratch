@@ -26,7 +26,28 @@ Create a `.env` file in the project root:
 OPENAI_API_KEY=your-api-key
 ```
 
-You can optionally set `LLM_URL` to use a different OpenAI-compatible endpoint. Start the CLI with:
+Optional LLM configuration:
+
+```env
+LLM_MODEL_NAME=gpt-5.6-terra
+LLM_API_MODE=auto
+LLM_REASONING_EFFORT=low
+LLM_URL=
+```
+
+`LLM_API_MODE` accepts `auto`, `responses`, or `chat_completions`. In `auto`
+mode, GPT-5.6 models use the Responses API by default, while older compatible
+models such as `gpt-4o-mini` use Chat Completions unless `LLM_URL` explicitly
+points at `/v1/responses`.
+
+`LLM_REASONING_EFFORT` accepts `none`, `minimal`, `low`, `medium`, `high`,
+`xhigh`, or `max`, depending on the selected model and endpoint. It is ignored
+for non-reasoning models such as `gpt-4o-mini`. GPT-5.6 tool calling with
+reasoning should use `LLM_API_MODE=responses`; Chat Completions with GPT-5.6
+function tools requires `LLM_REASONING_EFFORT=none`.
+
+You can optionally set `LLM_URL` to use a compatible endpoint for the selected
+API mode. Start the CLI with:
 
 ```sh
 npm start
